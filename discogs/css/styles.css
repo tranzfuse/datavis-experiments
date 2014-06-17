@@ -3,18 +3,12 @@ body {
   font-size: 11px;
 }
 
-svg {
-  border-bottom: 1px solid #000;
-  border-left: 1px solid #000;
+.chart rect {
+  fill: steelblue;
 }
 
-#years {
-  margin: 0;
-  padding: 0;
-  position: relative;
-}
-
-li {
-  list-style: none;
-  position: absolute;
+.chart text {
+  fill: white;
+  font: 10px sans-serif;
+  text-anchor: end;
 }

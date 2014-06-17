@@ -7,90 +7,64 @@
     <script src="../js/vendor/d3.min.js"></script>
   </head>
   <body>
-    <div id="release-years"></div>
+
+    <svg class="chart"></svg>
 
     <script>
       (function() {
+
         'use strict';
 
-        var svg,
-          svgW = 980,
-          svgH = 250;
+        var width = 420,
+          barHeight = 20;
 
         var discogsData, releases, years, yearAggregate, yearAggLen;
 
-        var bars,
-          barW,
-          barMargin = 5,
-          barHeightMultiplier = 10;
+        var x = d3.scale.linear()
+          .range([0, width]);
 
-        var labels;
-
-        var yearsList, yearsListItems;
-
-        svg = d3.select('#release-years')
-          .append('svg')
-          .attr('width', svgW)
-          .attr('height', svgH);
+        var chart = d3.select('.chart')
+          .attr('width', width)
 
         d3.json('discogs_collection_pg1.json', function(data) {
           discogsData = data;
           releases = discogsData.releases;
           yearAggregate = aggregateReleaseYears(releases);
           yearAggLen = yearAggregate.length;
-          barW = svgW / yearAggLen;
 
-          bars = svg.selectAll('rect')
-          .data(yearAggregate)
-          .enter()
-          .append('rect');
+          x.domain([0, d3.max(yearAggregate, function(d) {return d.count;})]);
 
-          bars.attr('fill', 'teal')
-          .attr('width', barW - barMargin)
-          .attr('height', function(d) {
-            var height = d.count * barHeightMultiplier;
-            return height;
-          })
-          .attr('x', function(d, i) {
-            return i * barW;
-          })
-          .attr('y', function(d, i) {
-            return svgH - d.count * barHeightMultiplier;
-          });
+          chart.attr('height', barHeight * yearAggLen);
 
-          labels = svg.selectAll('text')
+          var bar = chart.selectAll('g')
             .data(yearAggregate)
             .enter()
-            .append('text')
+            .append('g')
+            .attr('transform', function(d, i) {
+              return 'translate(0,' + i * barHeight + ')';
+            });
+
+          bar.append('rect')
+            .attr('width', function(d) {return x(d.count);})
+            .attr('height', barHeight - 1);
+
+          bar.append('text')
+            .attr('x', function(d) {
+              return x(d.count) - 3;
+            })
+            .attr('y', barHeight / 2)
+            .attr('dy', '.35em')
             .text(function(d) {
               return d.count;
-            })
-            .attr('x', function(d, i) {
-              return i * barW + (barW - this.getComputedTextLength()) / 2;
-            })
-            .attr('y', function(d, i) {
-              return svgH - d.count * barHeightMultiplier + 15; //15 is arbitrary, just nudging the label text a bit.
-            })
-            .attr('fill', 'white');
-
-          yearsList = d3.select('#release-years')
-            .append('ul')
-            .attr('id', 'years');
-
-          yearsListItems = yearsList.selectAll('li')
-            .data(yearAggregate)
-            .enter()
-            .append('li')
-            .text(function(d) {
-              return d.year;
-            })
-            .style('left', function(d, i) {
-              return i * barW + 'px';
-            })
-
+            });
         });
 
 
+        /**
+         * rebuild formatted object from discogs json data source
+         * @param {object} data the discogs json source
+         * @returns {object}
+         */
         function aggregateReleaseYears(data) {
           var summed = {},
             results = [],
@@ -120,7 +94,6 @@
 
           return results;
         }
-
       }());
     </script>
   </body>
