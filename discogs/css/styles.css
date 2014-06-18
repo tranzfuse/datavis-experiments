@@ -1,6 +1,26 @@
 body {
+  background-color: #F2F2F3;
   font-family: verdana, sans-serif;
   font-size: 11px;
+}
+
+h1, h2 {
+  color: #222326;
+}
+
+h2 {
+  margin-top: 0;
+}
+
+.container {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.chart-wrapper {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  padding: 10px;;
 }
 
 .bar {
@@ -18,6 +38,7 @@ body {
   shape-rendering: crispEdges;
 }
 
-.x.axis path {
+.x.axis path,
+.y.axis path {
   display: none;
 }
