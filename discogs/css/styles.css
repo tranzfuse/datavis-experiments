@@ -1,0 +1,48 @@
+body {
+  background-color: #F2F2F3;
+  font-family: "Helvetica Neue", sans-serif;
+  font-size: .75em;
+}
+
+h1 {
+  font-size: 2.25em;
+}
+h1, h2 {
+  color: #222326;
+  font-weight: 400;
+}
+
+h2 {
+  margin-top: 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.chart-wrapper {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  padding: 10px;;
+}
+
+.bar {
+  fill: mediumturquoise;
+}
+
+.axis text {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path,
+.y.axis path {
+  display: none;
+}
