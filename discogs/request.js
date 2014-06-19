@@ -3,7 +3,10 @@ var redis = require('redis'),
   http = require('http'),
   merge = require('merge'),
   url = require('url'),
-  path = '/users/tranzfuse/collection/folders/0/releases?per_page=100',
+  endpoint = '/users/tranzfuse/collection/folders/0/releases',
+  per_page = 100,
+  qs = '?per_page=' + per_page,
+  path = endpoint + qs,
   options = {
     hostname: 'api.discogs.com',
     path: path,
@@ -21,7 +24,10 @@ var redis = require('redis'),
   /**
    * Store each returned and parsed json dataset
    */
-  cache = [];
+  cache = [],
+
+  REDIS_KEY_SET_PAGE = 'discogs:page:',
+  REDIS_KEY_LIST_KEYS = 'discogs:keys';
 
 client.on('ready', function() {
   console.log('REDIS ready...');
@@ -42,21 +48,30 @@ function fetchDiscogsData(config) {
       res.on('data', function(chunk) {
         data.push(chunk);
       });
+
       res.on('end', function() {
-        var result = JSON.parse(data.join(''));
-        var pagi = result.pagination;
-        console.log('Receiving page ', pagi.page);
+        var result = JSON.parse(data.join('')),
+          pagi = result.pagination,
+          newPath,
+          opts,
+          key;
+
+        console.log('Receiving data for page ', pagi.page);
         cache.push(result);
+
         if (pagi.page < pagi.pages) {
           data = [];
-          var newPath = path + getUrlQueryString(result.pagination.urls.next);
-          var opts = {
+          newPath = endpoint + getUrlQueryString(result.pagination.urls.next);
+          opts = {
             path: newPath
           };
           fetchDiscogsData(opts);
         } else {
-          console.log('Done fetching, store json in db...');
-          storeDiscogsData(cache);
+          console.log('Done fetching, save json in db...');
+          cache.forEach(function(el, i, arr) {
+            key = REDIS_KEY_SET_PAGE + el.pagination.page;
+            saveDiscogsData(key, el);
+          });
         }
       });
   }).on('error', function(e) {
@@ -70,45 +85,43 @@ function fetchDiscogsData(config) {
  * @return {string} the url's query string
  */
 function getUrlQueryString(discogsUrl) {
-  var parsed = url.parse(discogsUrl);
+  var parsed = url.parse(discogsUrl, true);
   return parsed.search;
 }
 
 /**
  * Store discogs json data to data store
  * @param {array} data Array of json objects fetched from discogs api
- * @return boolean
+ * @return undefined
  */
-function storeDiscogsData(data) {
-  data.forEach(function(el, i, arr) {
-    var key = 'discogs:page:' + el.pagination.page;
-    client.get(key, function(err, reply) {
-      if (null === reply) {
-        client.set(key, JSON.stringify(el), function(err, reply) {
-          if (err) {
-            console.log('REDIS error when trying to write:', key, ' Error:', err);
-          } else {
-            console.log('REDIS success! Stored data for', key);
-            saveDiscogsKey(key);
-          }
-        });
-      }
-    });
+function saveDiscogsData(key, data) {
+  client.get(key, function(err, reply) {
+    if (null === reply) {
+      client.set(key, JSON.stringify(data), function(err, reply) {
+        if (err) {
+          console.log('REDIS error! Trying to write:', key, ' Error:', err);
+        } else {
+          console.log('REDIS success! Stored data for', key);
+          saveDiscogsKey(key);
+        }
+      });
+    } else {
+      console.log('REDIS data for key', key, 'already exists.');
+    }
   });
-  return true;
 }
 
 /**
- * Push discogs key onto keys list in Redis
+ * Push discogs key onto discogs:keys list in Redis
  * @param key {string} The discogs key
  * @return undefined
  */
 function saveDiscogsKey(key) {
-  client.rpush('discogs:keys', key, function(err, reply) {
+  client.rpush(REDIS_KEY_LIST_KEYS, key, function(err, reply) {
     if (err) {
-      console.log('REDIS error when trying to save key:', key, ' Error:', err);
+      console.log('REDIS error! Trying to save key:', key, 'Error:', err);
     } else {
-      console.log('REDIS success! Pushed key', key, ' onto discogs:keys');
+      console.log('REDIS success! Pushed key', key, 'onto discogs:keys');
     }
   });
 }

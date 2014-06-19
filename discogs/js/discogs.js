@@ -2,10 +2,10 @@
 
   'use strict';
 
-  var discogsData, releases, yearAggregate, yearAggLen;
+  var yearAggregate, yearAggLen;
 
   var margin = {top: 20, right: 30, bottom: 30, left: 40},
-    width = 960 - margin.left - margin.right,
+    width = 1180 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
 
   var x = d3.scale.ordinal()
@@ -28,14 +28,10 @@
     .append('g')
     .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
-  //load up the dater, then build the chart.
-  d3.json('discogs_collection_100.json', function(data) {
-    discogsData = data;
-    releases = discogsData.releases;
-    yearAggregate = aggregateReleaseYears(releases);
+  //load up the discogs data, then build the chart.
+  d3.json('discogs_aggregated_years.json', function(data) {
+    yearAggregate = formatAggregated(data);
     yearAggLen = yearAggregate.length;
-
-    console.log(data);
 
     x.domain(yearAggregate.map(function(d) {return d.year;}));
     y.domain([0, d3.max(yearAggregate, function(d) {return d.count;})]);
@@ -81,39 +77,23 @@
 
   });
 
-
   /**
    * rebuild formatted object from discogs json data source
    * @param {object} data the discogs json source
    * @returns {object}
    */
-  function aggregateReleaseYears(data) {
-    var summed = {},
-      results = [],
-      years = [];
-
-    //extract the release years into an array
-    data.forEach(function(el, i, arr) {
-      years.push(el.basic_information.year);
-    });
-
-    //sum number of times each year occurs and store in results object
-    years.map(function(year) {
-      if (year in summed) {
-        summed[year]++;
-      } else {
-        summed[year] = 1;
-      }
-    });
+  function formatAggregated(data) {
+    var results = [];
 
     //format data into array of objects
-    for (var prop in summed) {
+    for (var prop in data) {
       var obj = {};
       obj.year = prop;
-      obj.count = summed[prop];
+      obj.count = data[prop];
       results.push(obj);
     }
 
     return results;
   }
+
 }());
