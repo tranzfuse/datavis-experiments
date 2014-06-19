@@ -1,0 +1,18 @@
+{
+  "name": "Discogs Visualizations",
+  "version": "0.0.1",
+  "description": "D3 powered data visualizations of my Discogs collection data",
+  "main": "request.js",
+  "devDependencies": {
+    "merge": "~1.1.3",
+    "redis": "~0.10.3",
+    "express": "~4.4.3",
+    "q": "~1.0.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node request.js"
+  },
+  "author": "Adam Smith",
+  "license": "BSD"
+}
