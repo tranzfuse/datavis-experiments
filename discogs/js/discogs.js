@@ -33,6 +33,8 @@
     yearAggregate = formatAggregated(data);
     yearAggLen = yearAggregate.length;
 
+    console.log(yearAggregate);
+
     x.domain(yearAggregate.map(function(d) {return d.year;}));
     y.domain([0, d3.max(yearAggregate, function(d) {return d.count;})]);
 
@@ -89,7 +91,8 @@
     for (var prop in data) {
       var obj = {};
       obj.year = prop;
-      obj.count = data[prop];
+      obj.count = data[prop].count;
+      obj.formats = data[prop].formats
       results.push(obj);
     }
 

@@ -1,24 +1,26 @@
+'use strict';
+
 var redis = require('redis'),
   client = redis.createClient(6379, '127.0.0.1'),
   q = require('q'),
   fs = require('fs'),
-  cache = [],
-  releases = 
+  redisClientGet = q.nbind(client.get, client),
   REDIS_KEY_SET_PAGE = 'discogs:page:',
   REDIS_KEY_LIST_KEYS = 'discogs:keys';
 
-redisClientGet = q.nbind(client.get, client);
-
 client.on('ready', function() {
   console.log('REDIS ready...');
-  getDiscogsData();
+  getDiscogsData(redisCallback);
 });
 
+/**
+ * Need a way to handle async in a more dynamic way to get this to work.
+ */
 function getDiscogsDataBak() {
+  var cache;
   client.llen(REDIS_KEY_LIST_KEYS, function(err, reply) {
     for (var i = 0; i < reply; i++) {
       client.lindex(REDIS_KEY_LIST_KEYS, i, function(err, reply) {
-        console.log(reply);
         client.get(reply, function(err, reply) {
           console.log(reply);
           cache.push(reply);
@@ -29,9 +31,11 @@ function getDiscogsDataBak() {
 }
 
 /**
- * This is ridonkulous. There's a better way.
+ * This is ridonkulous. There's a better way...
+ * @param {function} cb callback to be called after promise is resolved
+ * @return undefined
  */
-function getDiscogsData() {
+function getDiscogsData(cb) {
   q.all([
     redisClientGet('discogs:page:1'),
     redisClientGet('discogs:page:2'),
@@ -56,60 +60,96 @@ function getDiscogsData() {
     redisClientGet('discogs:page:21'),
     redisClientGet('discogs:page:22')
   ]).then(function(data) {
-    data.forEach(function(el, i, arr) {
-      var data = JSON.parse(el);
-      var releases = data.releases;
-      cache.push.apply(cache, releases);
-    });
-    var results = {
-      releases: cache
-    };
-    var aggregated = aggregateReleaseYears(results.releases);
-    saveAggregated(JSON.stringify(aggregated));
+    cb(data);
   });
+}
+
+function redisCallback(response) {
+  var releasesArr = extractReleasesData(response);
+  var results = {
+    releases: releasesArr
+  }
+  var aggregated = aggregateReleaseData(results.releases);
+  saveAggregated(JSON.stringify(aggregated));
 }
 
 /**
- * rebuild formatted object from discogs json data source
- * @param {object} data the discogs json source
- * @returns {object}
+ * Build array of releases objects for easier aggregation of years info
+ * @param {array} array array of discogs json objects from redis
+ * @return {array}
  */
-function aggregateReleaseYears(data) {
-  var summed = {},
-    years = [];
-
-  //extract the release years into an array
-  data.forEach(function(el, i, arr) {
-    years.push(el.basic_information.year);
+function extractReleasesData(array) {
+  var cache = [];
+  array.forEach(function(el, i, arr) {
+    var data = JSON.parse(el);
+    var releases = data.releases;
+    cache.push.apply(cache, releases);
   });
-
-  //sum number of times each year occurs
-  years.map(function(year) {
-    if (year in summed) {
-      summed[year]++;
-    } else {
-      summed[year] = 1;
-    }
-  });
-
-  return summed;
+  return cache;
 }
 
+/**
+ * Write file to disk.
+ * @param {object} obj the json object to save in the file
+ * @return undefined
+ */
 function saveAggregated(obj) {
-  fs.writeFile('discogs_aggregated_years.json', obj, function(err) {
+  var fileName = 'discogs_aggregated_years.json';
+  fs.writeFile(fileName, obj, function(err) {
     if (err) throw err;
     console.log('Saved aggregated.');
   });
 }
 
 /**
- * format data into array of objects
+ * Extract release year and format data. Reformat it into
+ * a cute little condensed object and return it.
+ * @param {object} data the discogs json
+ * @return {object} summed the cute little condensed object
  */
-function formatSummed(summed) {
-  for (var prop in summed) {
-    var obj = {};
-    obj.year = prop;
-    obj.count = summed[prop];
-    results.push(obj);
-  }
+function aggregateReleaseData(data) {
+  var summed = {},
+    condensed = [];
+
+  //extract the release years into an array
+  data.forEach(function(el, i, arr) {
+    var obj = {},
+      formats;
+
+    formats = el.basic_information.formats;
+
+    if (formats.length === 0) {
+      formats = [{name: 'No Format Specified'}];
+    }
+    if (formats.length > 1) {
+      formats = [formats.shift()];
+    }
+
+    obj.year = el.basic_information.year;
+    obj.format = formats[0].name;
+
+    condensed.push(obj);
+  });
+
+  condensed.map(function(release) {
+    var year = release.year,
+      format = release.format;
+
+    if (year in summed) {
+      summed[year]['count']++;
+    } else {
+      summed[year] = {
+        count: 1,
+        formats: {}
+      }
+    }
+
+    if (format in summed[year]['formats']) {
+      summed[year]['formats'][format]++;
+    } else {
+      summed[year]['formats'][format] = 1;
+    }
+  });
+
+  return summed;
 }
