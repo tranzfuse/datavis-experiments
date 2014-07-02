@@ -6,7 +6,8 @@ var redis = require('redis'),
   fs = require('fs'),
   redisClientGet = q.nbind(client.get, client),
   REDIS_KEY_SET_PAGE = 'discogs:page:',
-  REDIS_KEY_LIST_KEYS = 'discogs:keys';
+  REDIS_KEY_LIST_KEYS = 'discogs:keys',
+  REDIS_KEY_HASH_YEAR = 'discogs:year';
 
 client.on('ready', function() {
   console.log('REDIS ready...');
@@ -94,11 +95,48 @@ function extractReleasesData(array) {
  * @return undefined
  */
 function saveAggregated(obj) {
-  var fileName = 'discogs_aggregated_years.json';
-  fs.writeFile(fileName, obj, function(err) {
+  var store = {};
+
+  //save to redis.
+  //redis format:
+  //'discogs:year:2001' Vinyl 181 CD 10 DVD 0 'No Format Specified' 0 total 191
+
+  obj = JSON.parse(obj);
+  for (var prop in obj) {
+    var key = REDIS_KEY_HASH_YEAR + ':' + prop,
+      tots = obj[prop]['total'],
+      vinyl = obj[prop]['Vinyl'] || 0,
+      cd = obj[prop]['CD'] || 0,
+      noformat = obj[prop]['No Format Specified'] || 0,
+      dvd = obj[prop]['DVD'] || 0,
+      hash = {};
+
+    hash = {
+      'total': tots,
+      'Vinyl': vinyl,
+      'CD': cd,
+      'No Format Specified': noformat,
+      'DVD': dvd
+    };
+
+    saveHash(key, hash);
+    store[prop] = hash;
+  }
+
+  function saveHash(k, v) {
+    client.hmset(k, v, function(err, reply) {
+      if (err) console.log(err);
+      console.log('REDIS saved aggregated', k, v);
+    });
+  }
+
+  var fileName = 'discogs_aggregated_years_reformatted.json';
+
+  fs.writeFile(fileName, JSON.stringify(store), function(err) {
     if (err) throw err;
-    console.log('Saved aggregated.');
+    console.log('Saved aggregated file', fileName);
   });
+
 }
 
 /**
@@ -136,18 +174,17 @@ function aggregateReleaseData(data) {
       format = release.format;
 
     if (year in summed) {
-      summed[year]['count']++;
+      summed[year]['total']++;
     } else {
       summed[year] = {
-        count: 1,
-        formats: {}
+        total: 1
       }
     }
 
-    if (format in summed[year]['formats']) {
-      summed[year]['formats'][format]++;
+    if (format in summed[year]) {
+      summed[year][format]++;
     } else {
-      summed[year]['formats'][format] = 1;
+      summed[year][format] = 1;
     }
   });
 
