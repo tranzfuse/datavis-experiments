@@ -1,5 +1,5 @@
 {
-  "name": "Discogs Visualizations",
+  "name": "discogs",
   "version": "0.0.1",
   "description": "D3 powered data visualizations of my Discogs collection data",
   "main": "request.js",
