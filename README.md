@@ -1,4 +1,4 @@
-datavis-experiments
+Data visualization experiments
 ===================
 
-Data visualization experiments
+
