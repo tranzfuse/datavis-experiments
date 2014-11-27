@@ -32,7 +32,7 @@
     .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
 
   //load up the discogs data, then build the chart.
-  d3.json('discogs_aggregated_years_reformatted.json', function(data) {
+  d3.json('json/discogs_aggregated_years_reformatted.json', function(data) {
     yearAggregate = formatAggregated(data);
     yearAggLen = yearAggregate.length;
 
