@@ -1,1 +1,1 @@
-View this visualization at [http://tranzfuse.github.io/datavis-experiments/discogs/](http://tranzfuse.github.io/datavis-experiments/discogs/)
+View this visualization at [http://www.tranzfuse.com/datavis-experiments/discogs/](http://www.tranzfuse.com/datavis-experiments/discogs/)
